@@ -85,13 +85,8 @@ JNI_METHOD(initFrontalFaceDetector)(JNIEnv *env, jobject obj, jstring path) {
 }
 
 extern "C"
-JNIEXPORT jintArray JNICALL
+JNIEXPORT jobjectArray JNICALL
 JNI_METHOD(detectLandmarksFromFace)(JNIEnv *env, jobject obj, jobject bitmap) {
-    jintArray result;
-    result = env->NewIntArray(4);
-    if (result == NULL) {
-        return NULL;
-    }
     try {
         array2d<rgb_pixel> img;
         convertBitmapToArray2d(env, bitmap, img);
@@ -106,23 +101,30 @@ JNI_METHOD(detectLandmarksFromFace)(JNIEnv *env, jobject obj, jobject bitmap) {
             full_object_detection shape = sp(img, dets[j]);
             shapes.push_back(shape);
         }
-        //for (int i = 0; i < dets.size(); ++i){
-        rectangle rect = dets[0];
-        float k = (float)img.nc()/(float)resizedImg.nc();
-        rectangle r = rectangle((long) (rect.left() * k), (long) (rect.top() * k),
-                                (long) (rect.right() * k), (long) (rect.bottom() * k));
-        //}
+        jclass cls = env->FindClass("[I");
+        jintArray iniVal = env->NewIntArray(dets.size());
+        jobjectArray outer = env->NewObjectArray(dets.size(), cls, iniVal);
+
+        for (int i = 0; i < dets.size(); ++i){
+            rectangle rect = dets[0];
+            float k = (float)img.nc()/(float)resizedImg.nc();
+            jintArray r;
+            r = env->NewIntArray(4);
+            jint fill[4];
+            fill[0] = (long) (rect.left() * k);
+            fill[1] = (long) (rect.top() * k);
+            fill[2] = (long) (rect.right() * k);
+            fill[3] = (long) (rect.bottom() * k);
+            env->SetIntArrayRegion(r, 0, 4, fill);
+            env->SetObjectArrayElement(outer, i, r);
+            env->DeleteLocalRef(r);
+        }
         dlib::array<array2d<rgb_pixel> > face_chips;
         //extract_image_chips(img, get_face_chip_details(shapes), face_chips);
-        jint fill[4];
-        fill[0] = r.left();
-        fill[1] = r.top();
-        fill[2] = r.right();
-        fill[3] = r.bottom();
-        env->SetIntArrayRegion(result, 0, 4, fill);
+        return outer;
 
     } catch (int a) {
 
     }
-    return result;
+    return NULL;
 }

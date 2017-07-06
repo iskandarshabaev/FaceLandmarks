@@ -67,11 +67,13 @@ public class MainActivity extends AppCompatActivity {
                 });
                 for (int i = 0; i < 100; i++) {
                     long time1 = System.nanoTime();
-                    final int[] bounds = frontalFaceDetector.detectLandmarksFromFace(d);
+                    final int[][] bounds = frontalFaceDetector.detectLandmarksFromFace(d);
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            canvas.drawRect(bounds[0], bounds[1], bounds[2], bounds[3], p);
+                            for (int[] bound : bounds) {
+                                canvas.drawRect(bound[0], bound[1], bound[2], bound[3], p);
+                            }
                             image.setImageBitmap(d);
                         }
                     });

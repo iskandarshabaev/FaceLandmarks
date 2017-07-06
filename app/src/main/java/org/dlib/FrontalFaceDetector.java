@@ -60,7 +60,7 @@ public class FrontalFaceDetector {
 
     private native void initFrontalFaceDetector(String path);
 
-    public native int[] detectLandmarksFromFace(Bitmap bitmap);
+    public native int[][] detectLandmarksFromFace(Bitmap bitmap);
 
     public interface Callbacks {
         void onSuccess();
