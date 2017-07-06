@@ -10,6 +10,6 @@ public class FrontalFaceDetector {
 
     public native void initFrontalFaceDetector(String path);
 
-    public native void detectLandmarksFromFace(Bitmap bitmap);
+    public native int[] detectLandmarksFromFace(Bitmap bitmap);
 
 }

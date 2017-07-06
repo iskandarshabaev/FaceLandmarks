@@ -63,8 +63,14 @@ JNI_METHOD(initFrontalFaceDetector)(JNIEnv *env, jobject obj, jstring path) {
 }
 
 extern "C"
-JNIEXPORT void JNICALL
+JNIEXPORT jintArray JNICALL
 JNI_METHOD(detectLandmarksFromFace)(JNIEnv *env, jobject obj, jobject bitmap) {
+
+    jintArray result;
+    result = env->NewIntArray(4);
+    if (result == NULL) {
+        return NULL;
+    }
     try {
         array2d<rgb_pixel> img;
         convertBitmapToArray2d(env, bitmap, img);
@@ -77,10 +83,22 @@ JNI_METHOD(detectLandmarksFromFace)(JNIEnv *env, jobject obj, jobject bitmap) {
             full_object_detection shape = sp(img, dets[j]);
             shapes.push_back(shape);
         }
+        //for (int i = 0; i < dets.size(); ++i){
+            rectangle rect = dets[0];
+            rectangle r = rectangle((long)(rect.left() * 1.9), (long)(rect.top() * 1.9),
+                           (long)(rect.right() * 1.9), (long)(rect.bottom() * 1.9));
+        //}
         dlib::array<array2d<rgb_pixel> > face_chips;
         //extract_image_chips(img, get_face_chip_details(shapes), face_chips);
+        jint fill[4];
+        fill[0] = r.left();
+        fill[1] = r.top();
+        fill[2] = r.right();
+        fill[3] = r.bottom();
+        env->SetIntArrayRegion(result, 0, 4, fill);
 
     } catch (int a) {
 
     }
+    return result;
 }
