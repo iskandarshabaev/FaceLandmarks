@@ -1,21 +1,16 @@
 #include <jni.h>
 #include <string>
-#include <android/bitmap.h>
 #include <dlib/image_processing/frontal_face_detector.h>
 #include <dlib/image_processing.h>
 #include <dlib/image_io.h>
-using namespace dlib;
-
-frontal_face_detector sFaceDetector;
-static shape_predictor sp;
+#include <android/bitmap.h>
 
 #define JNI_METHOD(NAME) \
     Java_org_dlib_FrontalFaceDetector_##NAME
 
-/*
 void convertBitmapToArray2d(JNIEnv* env,
                             jobject bitmap,
-                            array2d<rgb_pixel>& out) {
+                            dlib::array2d<dlib::rgb_pixel>& out) {
     AndroidBitmapInfo bitmapInfo;
     void* pixels;
     int state;
@@ -48,11 +43,14 @@ void convertBitmapToArray2d(JNIEnv* env,
     // Unlock the bitmap.
     AndroidBitmap_unlockPixels(env, bitmap);
 }
-*/
+
+dlib::frontal_face_detector sFaceDetector;
+dlib::shape_predictor sp;
+
 extern "C"
 JNIEXPORT jobject JNICALL
 JNI_METHOD(findLandmarks)(JNIEnv *env, jobject obj) {
-    array2d<rgb_pixel> img;
+    dlib::array2d<dlib::rgb_pixel> img;
     pyramid_up(img);
     jclass cls = env->FindClass("org/dlib/FullObjectDetection");
     jmethodID cid = env->GetMethodID(cls, "<init>", "()V");
@@ -61,8 +59,33 @@ JNI_METHOD(findLandmarks)(JNIEnv *env, jobject obj) {
 
 extern "C"
 JNIEXPORT void JNICALL
-JNI_METHOD(initFrontalFaceDetector)(JNIEnv *env, jobject obj) {
-    sFaceDetector = get_frontal_face_detector();
+JNI_METHOD(initFrontalFaceDetector)(JNIEnv *env, jobject obj, jstring path) {
+    sFaceDetector = dlib::get_frontal_face_detector();
+    const char *nativeString = env->GetStringUTFChars(path, 0);
+    dlib::deserialize(nativeString) >> sp;
+    env->ReleaseStringUTFChars(path, nativeString);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+JNI_METHOD(detectLandmarksFromFace)(JNIEnv *env, jobject obj, jobject bitmap) {
+    try {
+        dlib::array2d<dlib::rgb_pixel> img;
+        convertBitmapToArray2d(env, bitmap, img);
+        pyramid_up(img);
+        const long width = img.nc();
+        const long height = img.nr();
+        std::vector<dlib::rectangle> dets = sFaceDetector(img);
+        std::vector<dlib::full_object_detection> shapes;
+        for (unsigned long j = 0; j < dets.size(); ++j) {
+            dlib::full_object_detection shape = sp(img, dets[j]);
+            shapes.push_back(shape);
+        }
+        dlib::array<dlib::array2d<dlib::rgb_pixel> > face_chips;
+        //extract_image_chips(img, get_face_chip_details(shapes), face_chips);
+    } catch (int a) {
+
+    }
 }
 
 /*
