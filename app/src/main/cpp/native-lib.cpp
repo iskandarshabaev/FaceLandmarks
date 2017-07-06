@@ -12,12 +12,11 @@ using namespace std;
     Java_org_dlib_FrontalFaceDetector_##NAME
 
 
-
-void convertBitmapToArray2d(JNIEnv* env,
+void convertBitmapToArray2d(JNIEnv *env,
                             jobject bitmap,
-                            array2d<rgb_pixel>& out) {
+                            array2d<rgb_pixel> &out) {
     AndroidBitmapInfo bitmapInfo;
-    void* pixels;
+    void *pixels;
     int state;
     if (0 > (state = AndroidBitmap_getInfo(env, bitmap, &bitmapInfo))) {
         return;
@@ -27,10 +26,10 @@ void convertBitmapToArray2d(JNIEnv* env,
         return;
     }
     out.set_size((long) bitmapInfo.height, (long) bitmapInfo.width);
-    char* line = (char*) pixels;
+    char *line = (char *) pixels;
     for (int h = 0; h < bitmapInfo.height; ++h) {
         for (int w = 0; w < bitmapInfo.width; ++w) {
-            uint32_t* color = (uint32_t*) (line + 4 * w);
+            uint32_t *color = (uint32_t *) (line + 4 * w);
             out[h][w].red = (unsigned char) (0xFF & ((*color) >> 24));
             out[h][w].green = (unsigned char) (0xFF & ((*color) >> 16));
             out[h][w].blue = (unsigned char) (0xFF & ((*color) >> 8));
@@ -38,6 +37,29 @@ void convertBitmapToArray2d(JNIEnv* env,
         line = line + bitmapInfo.stride;
     }
     AndroidBitmap_unlockPixels(env, bitmap);
+}
+
+void resize_image_with_ratio(array2d<rgb_pixel> &in, array2d<rgb_pixel> &out,
+                             int max_width, int max_height) {
+    float ratio = 0;
+    int width = in.nc();
+    int height = in.nr();
+
+    int s_witdh = max_width;
+    int s_height = max_height;
+
+    if (width > max_width) {
+        ratio = (float) max_width / (float) width;
+        s_witdh = (int)(width * ratio);
+        s_height = (int) (height * ratio);
+    }
+    if (height > max_height) {
+        ratio = (float) max_height / (float) height;
+        s_witdh = (int)(width * ratio);
+        s_height = (int) (height * ratio);
+    }
+    out.set_size(s_height, s_witdh);
+    resize_image(in, out);
 }
 
 frontal_face_detector sFaceDetector;
@@ -65,7 +87,6 @@ JNI_METHOD(initFrontalFaceDetector)(JNIEnv *env, jobject obj, jstring path) {
 extern "C"
 JNIEXPORT jintArray JNICALL
 JNI_METHOD(detectLandmarksFromFace)(JNIEnv *env, jobject obj, jobject bitmap) {
-
     jintArray result;
     result = env->NewIntArray(4);
     if (result == NULL) {
@@ -74,8 +95,10 @@ JNI_METHOD(detectLandmarksFromFace)(JNIEnv *env, jobject obj, jobject bitmap) {
     try {
         array2d<rgb_pixel> img;
         convertBitmapToArray2d(env, bitmap, img);
+        array2d<rgb_pixel> resizedImg;
+        resize_image_with_ratio(img, resizedImg, 160, 160);
         array2d<unsigned char> img_gray;
-        assign_image(img_gray, img);
+        assign_image(img_gray, resizedImg);
         //pyramid_up(img);
         std::vector<rectangle> dets = sFaceDetector(img_gray);
         std::vector<full_object_detection> shapes;
@@ -84,9 +107,10 @@ JNI_METHOD(detectLandmarksFromFace)(JNIEnv *env, jobject obj, jobject bitmap) {
             shapes.push_back(shape);
         }
         //for (int i = 0; i < dets.size(); ++i){
-            rectangle rect = dets[0];
-            rectangle r = rectangle((long)(rect.left() * 1.9), (long)(rect.top() * 1.9),
-                           (long)(rect.right() * 1.9), (long)(rect.bottom() * 1.9));
+        rectangle rect = dets[0];
+        float k = (float)img.nc()/(float)resizedImg.nc();
+        rectangle r = rectangle((long) (rect.left() * k), (long) (rect.top() * k),
+                                (long) (rect.right() * k), (long) (rect.bottom() * k));
         //}
         dlib::array<array2d<rgb_pixel> > face_chips;
         //extract_image_chips(img, get_face_chip_details(shapes), face_chips);
