@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
             frontalFaceDetector.initFrontalFaceDetector("sdcard/shape_predictor_68_face_landmarks.dat");
             Bitmap photo = BitmapFactory.decodeResource(getResources(),
                     R.drawable.photo);
-            photo = Bitmap.createScaledBitmap(photo, photo.getWidth(), photo.getHeight(), false);
+            photo = Bitmap.createScaledBitmap(photo, (int)(photo.getWidth()/1.9), (int)(photo.getHeight()/1.9), false);
             for (int i = 0; i < 100; i++) {
                 long time1 = System.nanoTime();
                 frontalFaceDetector.detectLandmarksFromFace(photo);
