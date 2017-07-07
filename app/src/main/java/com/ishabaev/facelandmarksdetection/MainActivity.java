@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.widget.TextView;
 
 import org.dlib.FrontalFaceDetector;
@@ -20,10 +21,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         TextView tv = (TextView) findViewById(R.id.sample_text);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                find();
+            }
+        }).start();
+    }
+
+    private void find() {
         FrontalFaceDetector frontalFaceDetector = new FrontalFaceDetector();
         try {
             File f = new File("sdcard/shape_predictor_68_face_landmarks.dat");
-            if(!f.exists()) {
+            if (!f.exists()) {
                 InputStream is = getAssets().open("shape_predictor_68_face_landmarks.dat");
                 int size = is.available();
                 byte[] buffer = new byte[size];
@@ -37,8 +47,13 @@ public class MainActivity extends AppCompatActivity {
             frontalFaceDetector.initFrontalFaceDetector("sdcard/shape_predictor_68_face_landmarks.dat");
             Bitmap photo = BitmapFactory.decodeResource(getResources(),
                     R.drawable.photo);
-            photo = Bitmap.createScaledBitmap(photo, 250, 250, false);
-            byte[] d = frontalFaceDetector.detectLandmarksFromFace(photo);
+            photo = Bitmap.createScaledBitmap(photo, photo.getWidth(), photo.getHeight(), false);
+            for (int i = 0; i < 100; i++) {
+                long time1 = System.nanoTime();
+                frontalFaceDetector.detectLandmarksFromFace(photo);
+                long time2 = System.nanoTime();
+                Log.d("bench", "" + (time2 - time1)/1000/1000);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
