@@ -2,7 +2,6 @@
 #include <string>
 #include <dlib/image_processing/frontal_face_detector.h>
 #include <dlib/image_processing.h>
-#include <dlib/image_io.h>
 #include <android/bitmap.h>
 
 using namespace dlib;
@@ -50,12 +49,12 @@ void resize_image_with_ratio(array2d<rgb_pixel> &in, array2d<rgb_pixel> &out,
 
     if (width > max_width) {
         ratio = (float) max_width / (float) width;
-        s_witdh = (int)(width * ratio);
+        s_witdh = (int) (width * ratio);
         s_height = (int) (height * ratio);
     }
     if (height > max_height) {
         ratio = (float) max_height / (float) height;
-        s_witdh = (int)(width * ratio);
+        s_witdh = (int) (width * ratio);
         s_height = (int) (height * ratio);
     }
     out.set_size(s_height, s_witdh);
@@ -84,45 +83,54 @@ JNI_METHOD(initFrontalFaceDetector)(JNIEnv *env, jobject obj, jstring path) {
     env->ReleaseStringUTFChars(path, nativeString);
 }
 
+std::vector<rectangle> dets;
+array2d<rgb_pixel> resizedImg;
+float hK = 0;
+float wK = 0;
+
 extern "C"
 JNIEXPORT jobjectArray JNICALL
 JNI_METHOD(detectLandmarksFromFace)(JNIEnv *env, jobject obj, jobject bitmap) {
     try {
         array2d<rgb_pixel> img;
         convertBitmapToArray2d(env, bitmap, img);
-        array2d<rgb_pixel> resizedImg;
-        resize_image_with_ratio(img, resizedImg, 160, 160);
-        array2d<unsigned char> img_gray;
-        assign_image(img_gray, resizedImg);
-        //pyramid_up(img);
-        std::vector<rectangle> dets = sFaceDetector(img_gray);
+        //if (dets.size() == 0) {
+            resize_image_with_ratio(img, resizedImg, 160, 160);
+            array2d<unsigned char> img_gray;
+            assign_image(img_gray, resizedImg);
+            //pyramid_up(img);
+            dets = sFaceDetector(img_gray);
+            hK = (float)img.nr() / (float)resizedImg.nr();
+            wK = (float)img.nc() / (float)resizedImg.nc();
+        //}
         std::vector<full_object_detection> shapes;
         for (unsigned long j = 0; j < dets.size(); ++j) {
-            full_object_detection shape = sp(img, dets[j]);
+            full_object_detection shape = sp(resizedImg, dets[j]);
             shapes.push_back(shape);
         }
-        jclass cls = env->FindClass("[I");
-        jintArray iniVal = env->NewIntArray(dets.size());
-        jobjectArray outer = env->NewObjectArray(dets.size(), cls, iniVal);
+        /*dlib::array<array2d<rgb_pixel> > face_chips;
+        extract_image_chips(img, get_face_chip_details(shapes), face_chips);*/
 
-        for (int i = 0; i < dets.size(); ++i){
-            rectangle rect = dets[0];
-            float k = (float)img.nc()/(float)resizedImg.nc();
-            jintArray r;
-            r = env->NewIntArray(4);
-            jint fill[4];
-            fill[0] = (long) (rect.left() * k);
-            fill[1] = (long) (rect.top() * k);
-            fill[2] = (long) (rect.right() * k);
-            fill[3] = (long) (rect.bottom() * k);
-            env->SetIntArrayRegion(r, 0, 4, fill);
-            env->SetObjectArrayElement(outer, i, r);
-            env->DeleteLocalRef(r);
+        jclass intArray1DClass = env->FindClass("[I");
+        jclass intArray2DClass = env->FindClass("[[I");
+        jint sizeX = shapes.size();
+        jint sizeY = 68;
+        jint sizeZ = 2;
+        int po[2];
+        jobjectArray array3D = env->NewObjectArray(sizeX, intArray2DClass, NULL);
+        for (jint x = 0; x < sizeX; x++) {
+            jobjectArray array2D = env->NewObjectArray(sizeY, intArray1DClass, NULL);
+            for (jint y = 0; y < sizeY; y++) {
+                point p = shapes.at(x).part(y);
+                po[0] = (int)(p.x()*wK);
+                po[1] = (int)(p.y()*hK);
+                jintArray array1D = env->NewIntArray(sizeZ);
+                env->SetIntArrayRegion(array1D, 0, sizeZ, po);
+                env->SetObjectArrayElement(array2D, y, array1D);
+            }
+            env->SetObjectArrayElement(array3D, x, array2D);
         }
-        dlib::array<array2d<rgb_pixel> > face_chips;
-        //extract_image_chips(img, get_face_chip_details(shapes), face_chips);
-        return outer;
-
+        return array3D;
     } catch (int a) {
 
     }
