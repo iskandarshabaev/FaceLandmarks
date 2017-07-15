@@ -26,8 +26,21 @@ add_library( # Sets the name of the library.
              # Provides a relative path to your source file(s).
              src/main/cpp/native-lib.cpp )
 
+add_library( opencv_java3
+             SHARED
+             IMPORTED )
 
+set_target_properties( # Specifies the target library.
+                       opencv_java3
 
+                       # Specifies the parameter you want to define.
+                       PROPERTIES
+                       IMPORTED_LOCATION
+                       # Provides the path to the library you want to import.
+                       /Users/mac/AndroidStudioProjects/FaceLandmarks/app/src/main/jniLibs/${ANDROID_ABI}/libopencv_java3.so
+                       )
+
+include_directories(/Users/mac/OpenCV-android-sdk/sdk/native/jni/include/ )
 
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because CMake includes system libraries in the search path by
@@ -53,4 +66,6 @@ target_link_libraries( # Specifies the target library.
                        # Links the target library to the log library
                        # included in the NDK.
                        ${log-lib}
-                       dlib::dlib)
+                       dlib::dlib
+                       opencv_java3
+                       )
